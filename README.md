@@ -1209,36 +1209,6 @@ It measures database setup, count/query time, fetch time, and actual allocation 
 
 The purpose is to identify the first scaling bottleneck rather than claim production-scale capacity.
 
-Submission Deliverables
 
-The final repository should contain:
 
-Smart Dialer/
-├── app/
-├── Test/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── architecture.png
-│   ├── agent-state-machine.png
-│   ├── call-state-machine.png
-│   ├── architecture-decisions.md
-│   └── final-design-answer.md
-├── run_simulation.py
-├── run_load_test.py
-├── requirements.txt
-├── README.md
-└── .gitignore
 
-Do not commit:
-
-.env
-
-API keys or passwords
-
-venv/ or .venv/
-
-__pycache__/
-
-.pytest_cache/
-
-unnecessary generated database/cache files
