@@ -1,20 +1,19 @@
-# CreadResolve Internship Assignment
+CreadResolve Internship Assignment
 
 A distributed, fault-tolerant outbound dialing system that balances utilization with safety.
 
-## Overview
+Overview
 
 SmartDialer is a prototype implementation of an intelligent call center dialing system that can operate in two modes:
 
-1. **Progressive Dialing**: Conservative, safe. One agent → one call.
+Progressive Dialing: Conservative, safe. One agent → one call.
 
-2. **Predictive Dialing**: Aggressive, smart. Dial based on estimated answer rates and agent availability.
+Predictive Dialing: Aggressive, smart. Dial based on estimated answer rates and agent availability.
 
-The key innovation: A **Safety Controller** that acts as an independent safety boundary, preventing the predictive engine from creating abandoned calls even if the answer rate prediction is wrong.
+The key innovation: A Safety Controller that acts as an independent safety boundary, preventing the predictive engine from creating abandoned calls even if the answer rate prediction is wrong.
 
-## Architecture
+Architecture
 
-```
 
 Campaign
 
@@ -38,59 +37,58 @@ TelecomProvider (Abstract Interface)
 
 MockProviderA / MockProviderB (Realistic Simulation)
 
-```
 
-### Key Components
+Key Components
 
-#### 1. **Domain Models** (`app/domain/`)
+1. Domain Models (app/domain/)
 
-- `Agent`: Represents a call center agent with states (OFFLINE, AVAILABLE, RESERVED, DIALING, CONNECTED, WRAP_UP, PAUSED)
+Agent: Represents a call center agent with states (OFFLINE, AVAILABLE, RESERVED, DIALING, CONNECTED, WRAP_UP, PAUSED)
 
-- `Borrower`: Represents a borrower to be called
+Borrower: Represents a borrower to be called
 
-- `Call`: Represents an outbound call with full lifecycle tracking
+Call: Represents an outbound call with full lifecycle tracking
 
-- `Campaign`: Represents a dialing campaign with mode (PROGRESSIVE or PREDICTIVE)
+Campaign: Represents a dialing campaign with mode (PROGRESSIVE or PREDICTIVE)
 
-#### 2. **State Machines** (`app/state_machine/`)
+2. State Machines (app/state_machine/)
 
-- `AgentStateMachine`: Controls valid agent state transitions, prevents invalid transitions
+AgentStateMachine: Controls valid agent state transitions, prevents invalid transitions
 
-- `CallStateMachine`: Controls valid call state transitions, handles idempotency for duplicate/out-of-order events
+CallStateMachine: Controls valid call state transitions, handles idempotency for duplicate/out-of-order events
 
-#### 3. **Provider Abstraction** (`app/providers/`)
+3. Provider Abstraction (app/providers/)
 
-- `TelecomProvider`: Abstract interface that all providers must implement
+TelecomProvider: Abstract interface that all providers must implement
 
-- `MockProviderA`: High-quality provider (fast, reliable, no duplicates)
+MockProviderA: High-quality provider (fast, reliable, no duplicates)
 
-- `MockProviderB`: Low-quality provider (slow, failures, duplicates, out-of-order events)
+MockProviderB: Low-quality provider (slow, failures, duplicates, out-of-order events)
 
-#### 4. **Database & Repositories** (`app/db.py`, `app/models.py`, `app/repositories/`)
+4. Database & Repositories (app/db.py, app/models.py, app/repositories/)
 
-- SQLAlchemy ORM with SQLite for the prototype; PostgreSQL is the proposed production-scale database
+SQLAlchemy ORM with SQLite for the prototype; PostgreSQL is the proposed production-scale database
 
-- Optimistic locking pattern using version field
+Optimistic locking pattern using version field
 
-- Atomic concurrent operations: only ONE worker can reserve an agent/borrower
+Atomic concurrent operations: only ONE worker can reserve an agent/borrower
 
-#### 5. **Call Allocator** (`app/dialer/call_allocator.py`)
+5. Call Allocator (app/dialer/call_allocator.py)
 
-- Safely allocates agents and borrowers to calls
+Safely allocates agents and borrowers to calls
 
-- Atomic all-or-nothing operation
+Atomic all-or-nothing operation
 
-- Prevents duplicate reservations via version field
+Prevents duplicate reservations via version field
 
-#### 6. **Progressive Dialer** (`app/dialer/progressive.py`)
+6. Progressive Dialer (app/dialer/progressive.py)
 
-- Simple rule: available_agents > active_dialing_calls
+Simple rule: available_agents > active_dialing_calls
 
-- Conservative, guaranteed safe
+Conservative, guaranteed safe
 
-#### 7. **Predictive Pacing Engine** (`app/dialer/pacing_engine.py`)
+7. Predictive Pacing Engine (app/dialer/pacing_engine.py)
 
-- Calculates safe dial volume based on:
+Calculates safe dial volume based on:
 
   - Available agents
 
@@ -102,17 +100,17 @@ MockProviderA / MockProviderB (Realistic Simulation)
 
   - Average call duration
 
-- Formula: `safe_dials = total_agents - (connected + answer_rate × ringing) - safety_margin`
+Formula: safe_dials = total_agents - (connected + answer_rate × ringing) - safety_margin
 
-- **Does NOT directly place calls** - returns recommendation only
+Does NOT directly place calls - returns recommendation only
 
-#### 8. **Safety Controller** (`app/dialer/safety_controller.py`)
+8. Safety Controller (app/dialer/safety_controller.py)
 
-- Independent safety boundary between pacing and allocation
+Independent safety boundary between pacing and allocation
 
-- Can APPROVE, REDUCE, REJECT, or FALLBACK_TO_PROGRESSIVE
+Can APPROVE, REDUCE, REJECT, or FALLBACK_TO_PROGRESSIVE
 
-- Checks:
+Checks:
 
   - Agent availability buffer
 
@@ -122,13 +120,12 @@ MockProviderA / MockProviderB (Realistic Simulation)
 
   - Provider health
 
-- **Guaranteed**: Pacing engine cannot bypass this
+Guaranteed: Pacing engine cannot bypass this
 
-## Concurrency Model: How We Prevent Double-Reservation
+Concurrency Model: How We Prevent Double-Reservation
 
 When two workers try to reserve the same agent:
 
-```
 
 Worker A: SELECT agent WHERE id='agent-1' AND status='AVAILABLE'  
 
@@ -150,41 +147,35 @@ Worker B: UPDATE agent SET status='RESERVED', version=1
 
 Result: Only Worker A succeeds. Worker B's allocation fails cleanly.
 
-```
 
-This is **optimistic locking**: we trust the update will succeed, but verify using the version field in the WHERE clause.
+This is optimistic locking: we trust the update will succeed, but verify using the version field in the WHERE clause.
 
-## Setup & Installation
+Setup & Installation
 
-### Prerequisites
+Prerequisites
 
-- Python 3.9+
+Python 3.9+
 
-- pip
+pip
 
-### Install Dependencies
+Install Dependencies
 
-```bash
 
 cd "Smart Dialer"
 
 pip install -r requirements.txt
 
-```
 
-### Initialize Database
+Initialize Database
 
-```bash
 
 python -c "from app.db import init_db; init_db()"
 
-```
 
-This creates `smart_dialer.db` with all tables.
+This creates smart_dialer.db with all tables.
 
-## Running Tests
+Running Tests
 
-```bash
 
 # Run all unit tests
 
@@ -198,11 +189,9 @@ pytest Test/unit/test_agent_state_machine.py -v
 
 pytest Test/unit/test_agent_state_machine.py::test_offline_to_available -v
 
-```
 
-## How to Use (Programmatically)
+How to Use (Programmatically)
 
-```python
 
 from app.db import SessionLocal, init_db
 
@@ -290,55 +279,53 @@ decision = safety.evaluate_dial_request(request)
 
 print(f"Safety Decision: {decision.decision.value}, approved: {decision.approved_dials}")
 
-```
 
-## Key Design Decisions
+Key Design Decisions
 
-### 1. SQLite + SQLAlchemy
+1. SQLite + SQLAlchemy
 
-- **Why**: Simplicity for development, fast iteration
+Why: Simplicity for development, fast iteration
 
-- **Scales to**: PostgreSQL with minimal changes (just change DATABASE_URL)
+Scales to: PostgreSQL with minimal changes (just change DATABASE_URL)
 
-- **Benefit**: No need for Kafka/Redis for this prototype
+Benefit: No need for Kafka/Redis for this prototype
 
-### 2. Optimistic Locking (Version Field)
+2. Optimistic Locking (Version Field)
 
-- **Why**: Concurrent safety without explicit database locks
+Why: Concurrent safety without explicit database locks
 
-- **Pattern**: Read → Modify → Write (with version check)
+Pattern: Read → Modify → Write (with version check)
 
-- **Guarantee**: Only ONE writer succeeds per update
+Guarantee: Only ONE writer succeeds per update
 
-### 3. Single Worker (Initially)
+3. Single Worker (Initially)
 
-- **Why**: Simpler to develop and test
+Why: Simpler to develop and test
 
-- **Scales to**: Multiple workers with persistent job queue
+Scales to: Multiple workers with persistent job queue
 
-- **Database handles**: Multi-worker conflicts through version field
+Database handles: Multi-worker conflicts through version field
 
-### 4. Rule-Based Pacing (No ML)
+4. Rule-Based Pacing (No ML)
 
-- **Why**: Interpretable, debuggable, reliable
+Why: Interpretable, debuggable, reliable
 
-- **Formula**: Flow-control based on agent capacity
+Formula: Flow-control based on agent capacity
 
-- **Benefit**: Interview can explain every decision
+Benefit: Interview can explain every decision
 
-### 5. Independent Safety Controller
+5. Independent Safety Controller
 
-- **Why**: Cannot be bypassed by pacing engine
+Why: Cannot be bypassed by pacing engine
 
-- **Guarantee**: Pacing has no direct access to providers
+Guarantee: Pacing has no direct access to providers
 
-- **Benefit**: Separates concerns, easier to test
+Benefit: Separates concerns, easier to test
 
-## Failure Scenarios & Recovery
+Failure Scenarios & Recovery
 
-### Scenario 1: Duplicate Provider Events
+Scenario 1: Duplicate Provider Events
 
-```
 
 Provider sends: ANSWERED, ANSWERED, ANSWERED
 
@@ -356,11 +343,9 @@ System response:
 
 Result: Correct state maintained
 
-```
 
-### Scenario 2: Out-of-Order Events
+Scenario 2: Out-of-Order Events
 
-```
 
 Provider sends: COMPLETED, ANSWERED, RINGING
 
@@ -374,11 +359,9 @@ System response:
 
 Result: First valid event wins, others ignored
 
-```
 
-### Scenario 3: Worker Crash After ANSWERED
+Scenario 3: Worker Crash After ANSWERED
 
-```
 
 Worker: Agent reserved → Borrower reserved → Call initiated → Provider sent ANSWERED
 
@@ -404,11 +387,9 @@ Recovery (Phase 13):
 
 - If ANSWERED > timeout: Agent → AVAILABLE (hangup)
 
-```
 
-### Scenario 4: Provider Outage
+Scenario 4: Provider Outage
 
-```
 
 Provider stops responding to call initiation
 
@@ -426,9 +407,8 @@ System response:
 
 6. Gradually increases dial rate when provider recovers
 
-```
 
-## Testing Strategy
+Testing Strategy
 
 Unit & Integration Tests
 
@@ -480,11 +460,10 @@ pytest Test/unit/ -v
 
 Before submission, ensure the complete test suite finishes with zero failures and record the final result in this README.
 
-## API Endpoints
+API Endpoints
 
 
 
-```
 
 POST /campaigns
 
@@ -520,9 +499,8 @@ POST /test/provider-event
 
   Simulate a provider event (for testing)
 
-```
 
-## Simulation & Load Testing
+Simulation & Load Testing
 
 Scenarios
 
@@ -566,49 +544,48 @@ Test the system at representative scales such as:
 
 Document the first bottleneck observed and the architectural change that would address it.
 
-## Scaling Discussion
+Scaling Discussion
 
 
 
-### Current Bottlenecks (Single Worker)
+Current Bottlenecks (Single Worker)
 
-1. **Database transactions**: SQLite has single-writer limitation
+Database transactions: SQLite has single-writer limitation
 
    - Fix: PostgreSQL with connection pooling
 
-2. **Agent/Borrower lookup**: O(n) scan of AVAILABLE status
+Agent/Borrower lookup: O(n) scan of AVAILABLE status
 
    - Fix: Database index on status field (already implemented)
 
-3. **Event processing**: Single thread handling provider events
+Event processing: Single thread handling provider events
 
    - Fix: Async event queue, parallel processing
 
-### Multi-Worker Scaling
+Multi-Worker Scaling
 
-1. **Agent reservation conflicts**: Solved via optimistic locking ✅
+Agent reservation conflicts: Solved via optimistic locking ✅
 
-2. **Job duplication**: Use idempotency keys
+Job duplication: Use idempotency keys
 
-3. **Stale state detection**: Background reconciliation task
+Stale state detection: Background reconciliation task
 
-4. **Provider overload**: Rate limiting + queue
+Provider overload: Rate limiting + queue
 
-### 10,000 Agent Scaling
+10,000 Agent Scaling
 
-1. **Database**: PostgreSQL + connection pooling
+Database: PostgreSQL + connection pooling
 
-2. **Job queue**: Redis or persistent database queue
+Job queue: Redis or persistent database queue
 
-3. **Event processing**: Async workers + Kafka
+Event processing: Async workers + Kafka
 
-4. **Metrics**: Separate analytics database
+Metrics: Separate analytics database
 
-5. **Caching**: Agent/Borrower availability cache with TTL
+Caching: Agent/Borrower availability cache with TTL
 
-## File Structure
+File Structure
 
-```
 
 Smart Dialer/
 
@@ -728,209 +705,208 @@ Smart Dialer/
 
 └── smart_dialer.db              # SQLite database (auto-created)
 
-```
 
-## Interview Preparation
+Interview Preparation
 
-### Questions You Should Be Able to Answer
+Questions You Should Be Able to Answer
 
-#### Concurrency
+Concurrency
 
-**Q: Two workers try to reserve the same agent. Walk me through what happens.**
+Q: Two workers try to reserve the same agent. Walk me through what happens.
 
 A:
 
-- Both workers fetch the agent in AVAILABLE status with version=0
+Both workers fetch the agent in AVAILABLE status with version=0
 
-- Both try: `UPDATE agent SET status=RESERVED, version=1 WHERE id='agent-1' AND version=0`
+Both try: UPDATE agent SET status=RESERVED, version=1 WHERE id='agent-1' AND version=0
 
-- Only ONE UPDATE succeeds (version is now 1)
+Only ONE UPDATE succeeds (version is now 1)
 
-- The other UPDATE affects 0 rows (version mismatch)
+The other UPDATE affects 0 rows (version mismatch)
 
-- AgentRepository.update() returns False for the loser
+AgentRepository.update() returns False for the loser
 
-- CallAllocator detects failure and rolls back the allocation
+CallAllocator detects failure and rolls back the allocation
 
-- Resources are cleaned up
+Resources are cleaned up
 
-**Q: Why can't both workers succeed?**
+Q: Why can't both workers succeed?
 
-A: Because the WHERE clause includes `version=0`. Once first worker sets version=1, the WHERE condition no longer matches for the second worker. This is optimistic locking.
+A: Because the WHERE clause includes version=0. Once first worker sets version=1, the WHERE condition no longer matches for the second worker. This is optimistic locking.
 
-#### Consistency
+Consistency
 
-**Q: Database says AVAILABLE but cache says RESERVED. Which wins?**
+Q: Database says AVAILABLE but cache says RESERVED. Which wins?
 
 A: Database always wins. We have no cache in this implementation. Everything goes through repositories → database. If we added caching, cache would have TTL to prevent stale data.
 
-#### Events
+Events
 
-**Q: Provider sends ANSWERED twice. What happens?**
+Q: Provider sends ANSWERED twice. What happens?
 
 A: First ANSWERED transitions call from RINGING → CONNECTED. Second ANSWERED checks: can I transition CONNECTED → CONNECTED? No, that's invalid. CallStateMachine rejects it. Event is ignored. Call state remains CONNECTED. Idempotent.
 
-**Q: Provider sends COMPLETED before ANSWERED. What happens?**
+Q: Provider sends COMPLETED before ANSWERED. What happens?
 
 A: COMPLETED transitions RINGING → COMPLETED (valid). ANSWERED tries to transition COMPLETED → ANSWERED (invalid). Rejected. Call remains COMPLETED. Safe.
 
-#### Worker Failure
+Worker Failure
 
-**Q: Worker crashes immediately after ANSWERED. What happens?**
+Q: Worker crashes immediately after ANSWERED. What happens?
 
 A:
 
-- Agent state: DIALING
+Agent state: DIALING
 
-- Borrower state: RESERVED
+Borrower state: RESERVED
 
-- Call state: ANSWERED
+Call state: ANSWERED
 
-- Agent is tied up but worker is gone
+Agent is tied up but worker is gone
 
-- Background recovery job (Phase 13) detects stale state
+Background recovery job (Phase 13) detects stale state
 
-- Verifies call status is still ANSWERED after timeout
+Verifies call status is still ANSWERED after timeout
 
-- Marks call as FAILED
+Marks call as FAILED
 
-- Transitions agent to WRAP_UP then AVAILABLE
+Transitions agent to WRAP_UP then AVAILABLE
 
-- Frees the agent for other calls
+Frees the agent for other calls
 
-#### Prediction
+Prediction
 
-**Q: Why did your algorithm decide to start 17 calls instead of 10?**
+Q: Why did your algorithm decide to start 17 calls instead of 10?
 
 A: Let me break down the calculation:
 
-- Available agents: 30
+Available agents: 30
 
-- Reserved agents: 2
+Reserved agents: 2
 
-- Dialing agents: 5
+Dialing agents: 5
 
-- Total agents: 37
+Total agents: 37
 
-- Connected calls: 15
+Connected calls: 15
 
-- Ringing calls: 20
+Ringing calls: 20
 
-- Estimated answer rate: 50%
+Estimated answer rate: 50%
 
-- Expected connected soon: 15 + (0.5 × 20) = 25
+Expected connected soon: 15 + (0.5 × 20) = 25
 
-- Safety margin: 10% of 37 = 4
+Safety margin: 10% of 37 = 4
 
-- Idle buffer: 1 agent
+Idle buffer: 1 agent
 
-- Safe dials: 37 - 25 - 4 - 1 = 7
+Safe dials: 37 - 25 - 4 - 1 = 7
 
 Then Safety Controller applies additional checks:
 
-- Available agent buffer: need 2 idle = 30 - 2 = 28 available to use
+Available agent buffer: need 2 idle = 30 - 2 = 28 available to use
 
-- Actually approved: 17 dials (this is what passed safety)
+Actually approved: 17 dials (this is what passed safety)
 
 The number 17 reflects the predictive estimate being conservative after accounting for expected answer load.
 
-#### Safety
+Safety
 
-**Q: Can the predictive engine bypass the Safety Controller?**
+Q: Can the predictive engine bypass the Safety Controller?
 
 A: No. Architecture prevents it. Pacing engine calculates a recommendation (an integer). It cannot call providers directly. Call allocation is ONLY through CallAllocator. SafetyController must approve before allocation happens. There is no alternative path.
 
-**Q: What prevents bypassing?**
+Q: What prevents bypassing?
 
-A: Code structure. The pacing engine returns an int. To dial, you MUST call `CallAllocator.allocate_call()`. The allocator gets its logic from `SafetyController.evaluate_dial_request()`. There's no other way. API endpoints would also go through the same path.
+A: Code structure. The pacing engine returns an int. To dial, you MUST call CallAllocator.allocate_call(). The allocator gets its logic from SafetyController.evaluate_dial_request(). There's no other way. API endpoints would also go through the same path.
 
-#### Scaling
+Scaling
 
-**Q: What breaks when moving from 1,000 to 100,000 agents?**
+Q: What breaks when moving from 1,000 to 100,000 agents?
 
 A:
 
-1. **Database**: SQLite's single-writer limitation becomes bottleneck
+Database: SQLite's single-writer limitation becomes bottleneck
 
    - Fix: PostgreSQL + connection pooling
 
-2. **Agent lookup**: Current O(n) scan of AVAILABLE agents
+Agent lookup: Current O(n) scan of AVAILABLE agents
 
    - Fix: Database index (already implemented), or in-memory cache
 
-3. **Event processing**: Single thread becomes bottleneck
+Event processing: Single thread becomes bottleneck
 
    - Fix: Async workers + Redis queue
 
-4. **Provider throughput**: Mock providers can only handle so many concurrent calls
+Provider throughput: Mock providers can only handle so many concurrent calls
 
    - Fix: Scale provider infrastructure, implement rate limiting
 
-5. **Metrics collection**: Tracking millions of calls
+Metrics collection: Tracking millions of calls
 
    - Fix: Separate analytics database, time-series DB (InfluxDB)
 
-**Q: How would you redesign for 100K agents?**
+Q: How would you redesign for 100K agents?
 
 A:
 
-1. **Database tier**: PostgreSQL + replicas, connection pooling
+Database tier: PostgreSQL + replicas, connection pooling
 
-2. **Queue tier**: Redis for job queue, event stream
+Queue tier: Redis for job queue, event stream
 
-3. **Worker tier**: Multiple workers processing jobs + events (stateless)
+Worker tier: Multiple workers processing jobs + events (stateless)
 
-4. **Cache tier**: Redis for agent/borrower availability (with TTL)
+Cache tier: Redis for agent/borrower availability (with TTL)
 
-5. **Analytics tier**: Separate database for metrics
+Analytics tier: Separate database for metrics
 
-6. **Provider integration**: Batching, rate limiting, circuit breaker
+Provider integration: Batching, rate limiting, circuit breaker
 
-#### Architecture
+Architecture
 
-**Q: Why not Kafka?**
+Q: Why not Kafka?
 
 A: For this prototype, unnecessary complexity. SQLite database can handle job queue fine. Kafka would add operational overhead without solving any problem we have at this scale. If we need 10K+ workers, then yes, Kafka for event streaming.
 
-**Q: Why not Redis?**
+Q: Why not Redis?
 
 A: Same answer. We don't need distributed caching yet. Single machine SQLite is sufficient. If we add caching, Redis would be useful.
 
-**Q: Why not microservices?**
+Q: Why not microservices?
 
 A: Would only add complexity. We don't have separate scaling needs for each component. Single monolith is cleaner. Could split into services later if needed (Pacing service, Safety service, etc.), but costs outweigh benefits here.
 
-#### Tradeoffs
+Tradeoffs
 
-**Q: What part are you least confident about?**
+Q: What part are you least confident about?
 
 A: Event processing and failure recovery (Phase 12-13) are not yet implemented. Those are the trickiest parts:
 
-- Handling out-of-order events correctly
+Handling out-of-order events correctly
 
-- Detecting stale state without false positives
+Detecting stale state without false positives
 
-- Cleaning up orphaned resources safely
+Cleaning up orphaned resources safely
 
-**Q: What would you change if you had another week?**
+Q: What would you change if you had another week?
 
 A:
 
-1. Implement event processing + idempotency fully
+Implement event processing + idempotency fully
 
-2. Add comprehensive failure recovery
+Add comprehensive failure recovery
 
-3. Build simulation with real metrics
+Build simulation with real metrics
 
-4. Add load testing to identify bottlenecks
+Add load testing to identify bottlenecks
 
-5. Better provider health tracking
+Better provider health tracking
 
-6. Circuit breaker pattern for provider failures
+Circuit breaker pattern for provider failures
 
-7. Comprehensive logging/observability
+Comprehensive logging/observability
 
-## Current Implementation Status
+Current Implementation Status
 
 Phases 1-13 are completed, including:
 
@@ -986,7 +962,7 @@ Complete test run with zero failures
 
 Do not mark an item as complete until it has been implemented and verified.
 
-## Submission Checklist
+Submission Checklist
 
 Before submitting the repository:
 
@@ -1030,7 +1006,7 @@ Repository can be run locally by another engineer
 
 The assignment prioritizes correctness, safety, concurrency, failure handling, testing, and clear architectural reasoning over unnecessary infrastructure.
 
-## Final Submission Structure
+Final Submission Structure
 
 Smart Dialer/
 ├── app/
@@ -1049,19 +1025,220 @@ Smart Dialer/
 
 The exact folder structure may differ if the implementation uses another organization; the important requirement is that every assignment deliverable is easy to locate and run.
 
-## Assignment Alignment
+Assignment Alignment
 
 The prototype follows the required safety boundary:
 
 Campaign
-   ↓
+↓
 Progressive / Predictive Pacing
-   ↓
+↓
 Safety Controller
-   ↓
+↓
 Call Allocator
-   ↓
+↓
 Telecom Provider
 
 The predictive engine only recommends a dial volume. The Safety Controller independently decides what is allowed before calls are allocated.
 
+Submission Status
+
+Implementation completed through Phase 13
+
+The current implementation includes:
+
+Domain models for agents, borrowers, calls, and campaigns
+
+Agent and call state machines
+
+Telecom provider abstraction
+
+Mock Provider A and Mock Provider B
+
+SQLAlchemy database models and repositories
+
+Optimistic locking for concurrent updates
+
+Safe agent and borrower allocation
+
+Progressive Dialer
+
+Predictive Pacing Engine
+
+Independent Safety Controller
+
+Provider event processing
+
+Duplicate and out-of-order event handling
+
+Agent/call lifecycle synchronization
+
+Failure handling and recovery-related logic
+
+Integration and concurrency tests
+
+Current verification
+
+Run:
+
+pytest -q
+
+The submitted Phase 13 code was verified with the complete test suite and all tests passed.
+
+Database Integration
+
+The dial allocation path is database-backed.
+
+The main flow is:
+
+Database
+   │
+   ├── Available Agents
+   │       ↓
+   │   AgentRepository
+   │       ↓
+   │   CallAllocator
+   │
+   └── Available Borrowers for Campaign
+           ↓
+       BorrowerRepository
+           ↓
+       CallAllocator
+           ↓
+       CallRepository
+
+When CallAllocator.allocate_call(campaign_id, provider_name) runs:
+
+It queries the database for an available agent.
+
+It reserves that agent using the version field/optimistic locking.
+
+It queries the database for an available borrower belonging to the requested campaign.
+
+It reserves that borrower.
+
+It creates a Call containing the selected agent_id and borrower_id.
+
+It persists the call.
+
+It stores the call ID on the selected agent and borrower.
+
+The current prototype selects the first available database row returned by the repository (limit=1). It does not implement a sophisticated agent/borrower ranking policy; that is an intentional prototype simplification.
+
+Running the Project
+
+From the Smart Dialer directory:
+
+Install
+
+pip install -r requirements.txt
+
+Initialize the database
+
+python -c "from app.db import init_db; init_db()"
+
+Run all tests
+
+pytest -q
+
+Run simulation
+
+python run_simulation.py
+
+Run load test
+
+Quick test:
+
+python run_load_test.py --sizes 100 --allocation-batch 5
+
+Full assignment-oriented test:
+
+python run_load_test.py --sizes 100 1000 10000
+
+Simulation
+
+The simulation exercises the real database-backed pacing, safety, allocation, provider, and event-processing flow.
+
+The assignment scenarios are:
+
+Scenario
+
+Answer Rate
+
+Average Talk Time
+
+A
+
+20%
+
+120 sec
+
+B
+
+50%
+
+90 sec
+
+C
+
+70%
+
+180 sec
+
+D
+
+Changing/degraded provider conditions
+
+Changing
+
+The simulation records relevant behaviour such as calls attempted/connected, provider failures, event-processing results, and safety decisions.
+
+Load Test
+
+The load test uses the real SQLAlchemy database models/repositories and the real CallAllocator.
+
+It evaluates:
+
+100 agents
+
+1,000 agents
+
+10,000 agents
+
+It measures database setup, count/query time, fetch time, and actual allocation time.
+
+The purpose is to identify the first scaling bottleneck rather than claim production-scale capacity.
+
+Submission Deliverables
+
+The final repository should contain:
+
+Smart Dialer/
+├── app/
+├── Test/
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── architecture.png
+│   ├── agent-state-machine.png
+│   ├── call-state-machine.png
+│   ├── architecture-decisions.md
+│   └── final-design-answer.md
+├── run_simulation.py
+├── run_load_test.py
+├── requirements.txt
+├── README.md
+└── .gitignore
+
+Do not commit:
+
+.env
+
+API keys or passwords
+
+venv/ or .venv/
+
+__pycache__/
+
+.pytest_cache/
+
+unnecessary generated database/cache files
